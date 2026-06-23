@@ -5,9 +5,9 @@ import { StyleSheet, Text, View } from "react-native";
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 const TABS: { name: string; label: string; icon: IoniconsName; iconActive: IoniconsName }[] = [
-  { name: "home",    label: "HOME",    icon: "home-outline",      iconActive: "home"           },
-  { name: "match",   label: "MATCH",   icon: "basketball-outline", iconActive: "basketball"     },
-  { name: "history", label: "HISTORY", icon: "time-outline",       iconActive: "time"           },
+  { name: "(tabs)/home",    label: "HOME",    icon: "home-outline",      iconActive: "home"           },
+  { name: "(tabs)/match",   label: "MATCH",   icon: "basketball-outline", iconActive: "basketball"     },
+  { name: "(tabs)/history", label: "HISTORY", icon: "time-outline",       iconActive: "time"           },
 ];
 
 function TabIcon({
@@ -26,7 +26,9 @@ function TabIcon({
     <View style={styles.tabItem}>
       <Ionicons name={focused ? iconActive : icon} size={22} color={color} />
       {focused && <View style={styles.activeLine} />}
-      <Text style={[styles.tabLabel, { color }]}>{label}</Text>
+      <Text style={[styles.tabLabel, { color }]} numberOfLines={1} adjustsFontSizeToFit>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -77,6 +79,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 3,
     paddingTop: 6,
+    width: 80,
   },
   activeLine: {
     width: 4,
@@ -89,4 +92,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 1.5,
   },
-});
+}); 
