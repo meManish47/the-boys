@@ -90,6 +90,8 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 9,
     fontWeight: "700",
-    letterSpacing: 1.5,
+    letterSpacing: 1,
+    textAlign: "center",
+    width: 80,
   },
 }); 
