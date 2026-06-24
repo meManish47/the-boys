@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from "react";
 import {
   StyleSheet,
@@ -24,6 +25,40 @@ export default function Index() {
       return;
     }
     await AsyncStorage.setItem("player_name", name.trim());
+
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+        },
+      });
+      finalStatus = status;
+    }
+
+    if (finalStatus === "granted") {
+      await Notifications.cancelAllScheduledNotificationsAsync(); // clear old ones first
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Boys 🏐",
+          body: "Aaj aa raha hai? Attendance laga bhai!",
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+          hour: 17,
+          minute: 0,
+          repeats: true,
+        },
+      });
+    } else {
+      alert("Please enable notifications in your phone settings to get match reminders!");
+    }
+
     router.replace("/home");
   };
 

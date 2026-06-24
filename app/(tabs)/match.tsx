@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from 'expo-notifications';
 import { onValue, ref, set, update } from "firebase/database";
 import { useEffect, useState } from "react";
 import { ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
@@ -123,6 +124,15 @@ export default function Match() {
   const confirmAmount  = async () => {
     await set(ref(db, `matches/${today}/amountWon`), match?.pendingAmount);
     await set(ref(db, `matches/${today}/status`), "paid_pending");
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Match Over! 🏆",
+        body: `${resultLabel(match?.result)} — ₹${match?.pendingAmount} settled`,
+        sound: true,
+      },
+      trigger: null,
+    });
   };
   const rejectAmount   = async () => {
     await set(ref(db, `matches/${today}/pendingAmount`), null);

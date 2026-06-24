@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.memanish47.theboys",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -39,6 +43,13 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#F59E0B"
+        }
       ]
     ],
     "experiments": {
@@ -56,6 +67,7 @@
     },
     "updates": {
       "url": "https://u.expo.dev/cf3f7f0a-c49e-473f-a05b-d86cb8fed6d7"
-    }
+    },
+    "owner": "memanish47"
   }
 }

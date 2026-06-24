@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from 'expo-notifications';
 import { onValue, ref, set } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
@@ -52,6 +53,19 @@ export default function Home() {
   const needed = NEEDED - coming.length;
   const gameOn = coming.length >= NEEDED;
   const myStatus = players.find((p) => p.name === name);
+
+  useEffect(() => {
+    if (coming.length === NEEDED) {
+      Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Game On! 🔥",
+          body: "6 players confirmed — aaj match pakka!",
+          sound: true,
+        },
+        trigger: null,
+      });
+    }
+  }, [coming.length]);
 
   return (
     <View style={s.root}>

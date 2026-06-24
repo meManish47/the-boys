@@ -1,6 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Notifications from 'expo-notifications';
 import { Tabs } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
