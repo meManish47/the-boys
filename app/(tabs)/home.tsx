@@ -1,8 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from 'expo-notifications';
 import { onValue, ref, set } from "firebase/database";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -25,6 +26,17 @@ export default function Home() {
   const [players, setPlayers] = useState<any[]>([]);
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [arrivalTime, setArrivalTime] = useState("");
+  const [showCoin, setShowCoin] = useState(false);
+  const [coinResult, setCoinResult] = useState<"HEADS" | "TAILS" | null>(null);
+
+  const flipAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const coming = players.filter((p) => p.coming);
+  const notComing = players.filter((p) => !p.coming);
+  const needed = NEEDED - coming.length;
+  const gameOn = coming.length >= NEEDED;
+  const myStatus = players.find((p) => p.name === name);
 
   useEffect(() => {
     AsyncStorage.getItem("player_name").then((n) => { if (n) setName(n); });
@@ -35,24 +47,6 @@ export default function Home() {
       setPlayers(Object.entries(data).map(([n, v]: any) => ({ name: n, coming: v.coming, time: v.time })));
     });
   }, []);
-
-  const markAttendance = async (coming: boolean, time?: string) => {
-    const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    await set(ref(db, `sessions/${today}/${name}`), { coming, time: coming ? time || "6PM" : null });
-  };
-
-  const handleConfirm = () => {
-    markAttendance(true, arrivalTime || "6PM");
-    setShowTimeModal(false);
-    setArrivalTime("");
-  };
-
-  const coming = players.filter((p) => p.coming);
-  const notComing = players.filter((p) => !p.coming);
-  const needed = NEEDED - coming.length;
-  const gameOn = coming.length >= NEEDED;
-  const myStatus = players.find((p) => p.name === name);
 
   useEffect(() => {
     if (coming.length === NEEDED) {
@@ -67,36 +61,83 @@ export default function Home() {
     }
   }, [coming.length]);
 
+  const markAttendance = async (coming: boolean, time?: string) => {
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    await set(ref(db, `sessions/${today}/${name}`), { coming, time: coming ? time || "6PM" : null });
+  };
+
+  const handleConfirm = () => {
+    markAttendance(true, arrivalTime || "6PM");
+    setShowTimeModal(false);
+    setArrivalTime("");
+  };
+
+  const flipCoin = () => {
+    setCoinResult(null);
+    flipAnim.setValue(0);
+    scaleAnim.setValue(1);
+
+    const result = Math.random() < 0.5 ? "HEADS" : "TAILS";
+
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 1.4,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(flipAnim, {
+        toValue: 6,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setCoinResult(result));
+  };
+
+  const spin = flipAnim.interpolate({
+    inputRange: [0, 6],
+    outputRange: ["0deg", "1080deg"],
+  });
+
   return (
     <View style={s.root}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
 
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
-        {/* ── HEADER ─────────────────────────────────────────── */}
+        {/* HEADER */}
         <View style={s.header}>
           <View>
-            <Text style={s.appName}>THE BOYS 2.0</Text>
+            <Text style={s.appName}>THE BOYS</Text>
             <Text style={s.headerDate}>
               {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" }).toUpperCase()}
             </Text>
           </View>
-          {myStatus && (
-            <Text style={[s.myStatusChip, { color: myStatus.coming ? C.green : C.red }]}>
-              {myStatus.coming ? `● IN · ${myStatus.time || "6PM"}` : "● OUT"}
-            </Text>
-          )}
+          <View style={s.headerRight}>
+            {myStatus && (
+              <Text style={[s.myStatusChip, { color: myStatus.coming ? C.green : C.red }]}>
+                {myStatus.coming ? `● IN · ${myStatus.time || "6PM"}` : "● OUT"}
+              </Text>
+            )}
+            <TouchableOpacity onPress={() => { setShowCoin(true); flipCoin(); }} style={s.coinBtn}>
+              <Text style={s.coinBtnText}>Toss 🪙</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={s.divider} />
 
-        {/* ── SCOREBOARD STATS ────────────────────────────────── */}
+        {/* STATS */}
         <View style={s.statsRow}>
           <View style={[s.statBlock, { borderRightWidth: 1, borderRightColor: C.line }]}>
             <Text style={[s.statNum, { color: C.green }]}>{coming.length}</Text>
             <Text style={s.statLabel}>CONFIRMED</Text>
           </View>
-
           <View style={[s.statBlock, { borderRightWidth: 1, borderRightColor: C.line }]}>
             {gameOn
               ? <Text style={[s.statNum, { color: C.amber, fontSize: 18 }]}>GAME{"\n"}ON</Text>
@@ -104,7 +145,6 @@ export default function Home() {
             }
             <Text style={s.statLabel}>{gameOn ? "READY" : "NEEDED"}</Text>
           </View>
-
           <View style={s.statBlock}>
             <Text style={[s.statNum, { color: C.gray }]}>{notComing.length}</Text>
             <Text style={s.statLabel}>OUT</Text>
@@ -113,7 +153,7 @@ export default function Home() {
 
         <View style={s.divider} />
 
-        {/* ── CTA BUTTONS ─────────────────────────────────────── */}
+        {/* CTA BUTTONS */}
         <View style={s.btnRow}>
           <TouchableOpacity style={s.yesBtn} onPress={() => setShowTimeModal(true)} activeOpacity={0.75}>
             <Text style={s.yesBtnText}>✓  I'M COMING</Text>
@@ -125,14 +165,14 @@ export default function Home() {
 
         <View style={s.divider} />
 
-        {/* ── COMING LIST ─────────────────────────────────────── */}
+        {/* COMING LIST */}
         {coming.length > 0 && (
           <>
             <View style={s.sectionHeader}>
               <Text style={s.sectionTitle}>COMING</Text>
               <Text style={[s.sectionTitle, { color: C.amber }]}>{coming.length}</Text>
             </View>
-            {coming.map((p, i) => (
+            {coming.map((p) => (
               <View key={p.name}>
                 <View style={s.playerRow}>
                   <View style={s.playerLeft}>
@@ -147,7 +187,7 @@ export default function Home() {
           </>
         )}
 
-        {/* ── NOT COMING ──────────────────────────────────────── */}
+        {/* NOT COMING */}
         {notComing.length > 0 && (
           <>
             <View style={s.sectionHeader}>
@@ -171,7 +211,7 @@ export default function Home() {
 
       </ScrollView>
 
-      {/* ── TIME MODAL ──────────────────────────────────────────── */}
+      {/* TIME MODAL */}
       <Modal visible={showTimeModal} transparent animationType="slide">
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={s.modalWrap}>
           <View style={s.modal}>
@@ -197,54 +237,105 @@ export default function Home() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* COIN TOSS MODAL */}
+      <Modal visible={showCoin} transparent animationType="fade">
+        <View style={s.coinOverlay}>
+          <View style={s.coinBox}>
+            <Text style={s.coinTitle}>COIN TOSS</Text>
+            <View style={s.divider} />
+
+            <Animated.Text style={[
+              s.coinEmoji,
+              { transform: [{ rotateY: spin }, { scale: scaleAnim }] }
+            ]}>
+              🪙
+            </Animated.Text>
+
+            {coinResult ? (
+              <>
+                <Text style={s.coinResult}>{coinResult}</Text>
+                <Text style={s.coinSub}>
+                  {coinResult === "HEADS" ? "Heads it is!" : "Tails it is!"}
+                </Text>
+              </>
+            ) : (
+              <Text style={s.coinSub}>Flipping...</Text>
+            )}
+
+            <View style={s.divider} />
+
+            <TouchableOpacity style={s.coinFlipBtn} onPress={flipCoin} activeOpacity={0.8}>
+              <Text style={s.coinFlipBtnText}>FLIP AGAIN</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowCoin(false); setCoinResult(null); }}>
+              <Text style={s.cancelText}>CLOSE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1, backgroundColor: C.bg },
   scroll: { flex: 1 },
-  content:{ paddingBottom: 100 },
+  content: { paddingBottom: 100 },
 
   // Header
-  header:      { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 56, paddingBottom: 16 },
-  appName:     { fontSize: 28, fontWeight: F.black, color: C.white, letterSpacing: 4 },
-  headerDate:  { fontSize: 11, fontWeight: F.semi, color: C.gray, letterSpacing: 1.5, marginTop: 4 },
-  myStatusChip:{ fontSize: 12, fontWeight: F.bold, letterSpacing: 1 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", paddingHorizontal: 16, paddingTop: 56, paddingBottom: 16 },
+  headerRight: { alignItems: "flex-end", gap: 8 },
+  appName: { fontSize: 28, fontWeight: F.black, color: C.white, letterSpacing: 4 },
+  headerDate: { fontSize: 11, fontWeight: F.semi, color: C.gray, letterSpacing: 1.5, marginTop: 4 },
+  myStatusChip: { fontSize: 12, fontWeight: F.bold, letterSpacing: 1 },
+  coinBtn: { padding: 4, height: 35, width: 95, justifyContent: 'center', alignItems: 'center', borderRadius: 20, borderColor: '#555', borderWidth: 1, backgroundColor: "#222", marginRight: 8 },
+  coinBtnText: { fontSize: 18, color: 'white', fontWeight: F.black },
 
   divider: { height: 1, backgroundColor: C.line },
 
   // Stats
-  statsRow:  { flexDirection: "row" },
+  statsRow: { flexDirection: "row" },
   statBlock: { flex: 1, alignItems: "center", paddingVertical: 24 },
-  statNum:   { fontSize: 44, fontWeight: F.black, letterSpacing: -1, lineHeight: 50 },
+  statNum: { fontSize: 44, fontWeight: F.black, letterSpacing: -1, lineHeight: 50 },
   statLabel: { fontSize: 10, fontWeight: F.bold, color: C.gray, letterSpacing: 2, marginTop: 4 },
 
   // Buttons
-  btnRow:    { flexDirection: "row" },
-  yesBtn:    { flex: 1, backgroundColor: C.amber, paddingVertical: 18, alignItems: "center", borderRightWidth: 1, borderRightColor: C.bg },
-  yesBtnText:{ fontSize: 14, fontWeight: F.black, color: "#000", letterSpacing: 2 },
-  noBtn:     { flex: 1, backgroundColor: C.surface, paddingVertical: 18, alignItems: "center" },
+  btnRow: { flexDirection: "row" },
+  yesBtn: { flex: 1, backgroundColor: C.amber, paddingVertical: 18, alignItems: "center", borderRightWidth: 1, borderRightColor: C.bg },
+  yesBtnText: { fontSize: 14, fontWeight: F.black, color: "#000", letterSpacing: 2 },
+  noBtn: { flex: 1, backgroundColor: C.surface, paddingVertical: 18, alignItems: "center" },
   noBtnText: { fontSize: 14, fontWeight: F.bold, color: C.gray, letterSpacing: 2 },
 
   // Section
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10 },
-  sectionTitle:  { fontSize: 11, fontWeight: F.black, color: C.white, letterSpacing: 2 },
+  sectionTitle: { fontSize: 11, fontWeight: F.black, color: C.white, letterSpacing: 2 },
 
   // Player rows
-  playerRow:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14 },
+  playerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14 },
   playerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   playerName: { fontSize: 14, fontWeight: F.bold, color: C.white, letterSpacing: 1 },
   playerTime: { fontSize: 12, fontWeight: F.semi, color: C.amber, letterSpacing: 1 },
 
-  // Modal
+  // Time Modal
   modalWrap: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "flex-end" },
-  modal:     { backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.line },
-  modalTitle:{ fontSize: 16, fontWeight: F.black, color: C.white, letterSpacing: 3, padding: 20, paddingBottom: 4 },
-  modalSub:  { fontSize: 12, color: C.gray, letterSpacing: 0.5, paddingHorizontal: 20, paddingBottom: 16 },
-  input:     { fontSize: 16, color: C.white, letterSpacing: 0.5, padding: 20, backgroundColor: C.surface },
-  sheetBtn:  { backgroundColor: C.amber, paddingVertical: 18, alignItems: "center" },
+  modal: { backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.line },
+  modalTitle: { fontSize: 16, fontWeight: F.black, color: C.white, letterSpacing: 3, padding: 20, paddingBottom: 4 },
+  modalSub: { fontSize: 12, color: C.gray, letterSpacing: 0.5, paddingHorizontal: 20, paddingBottom: 16 },
+  input: { fontSize: 16, color: C.white, letterSpacing: 0.5, padding: 20, backgroundColor: C.surface },
+  sheetBtn: { backgroundColor: C.amber, paddingVertical: 18, alignItems: "center" },
   sheetBtnText: { fontSize: 14, fontWeight: F.black, color: "#000", letterSpacing: 3 },
   cancelBtn: { paddingVertical: 18, alignItems: "center", backgroundColor: C.bg },
-  cancelText:{ fontSize: 13, fontWeight: F.bold, color: C.gray, letterSpacing: 2 },
+  cancelText: { fontSize: 13, fontWeight: F.bold, color: C.gray, letterSpacing: 2 },
+
+  // Coin Modal
+  coinOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.92)", justifyContent: "center", alignItems: "center" },
+  coinBox: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.line, width: "85%", overflow: "hidden" },
+  coinTitle: { fontSize: 14, fontWeight: F.black, color: C.white, letterSpacing: 4, padding: 20 },
+  coinEmoji: { fontSize: 80, textAlign: "center", paddingVertical: 40 },
+  coinResult: { fontSize: 36, fontWeight: F.black, color: C.amber, letterSpacing: 6, textAlign: "center", paddingBottom: 8 },
+  coinSub: { fontSize: 13, color: C.gray, letterSpacing: 2, textAlign: "center", paddingBottom: 24 },
+  coinFlipBtn: { backgroundColor: C.amber, paddingVertical: 18, alignItems: "center" },
+  coinFlipBtnText: { fontSize: 14, fontWeight: F.black, color: "#000", letterSpacing: 3 },
 });

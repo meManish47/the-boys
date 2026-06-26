@@ -252,15 +252,18 @@ function MatchCard({
   if (!record) return null;
   const status = getStatus(record);
   const isWin = status === "winA" || status === "winB";
+  const isDraw = status === "draw";
   const isLive = status === "live";
   const won = record.amountWon ?? 0;
   const paid = record.amountPaid ?? 0;
   const left = Math.max(won - paid, 0);
+  const winnerName = status === "winA" ? record.captainA?.toUpperCase() : (status === "winB" ? record.captainB?.toUpperCase() : "");
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={c.card}>
       {/* Amber win bar */}
       {isWin && <View style={c.winBar} />}
+      {isDraw && <View style={[c.winBar, { backgroundColor: "#888" }]} />}
 
       <View style={c.inner}>
         {/* Top: date + status */}
@@ -275,26 +278,35 @@ function MatchCard({
 
         {/* Captains row */}
         <View style={c.captainsRow}>
-          <Text style={c.captainA} numberOfLines={1}>
+          <Text style={[c.captainA, (isWin && status !== "winA") && { color: "#444" }]} numberOfLines={1}>
             {record.captainA?.toUpperCase()}
           </Text>
           <Text style={c.vs}>VS</Text>
-          <Text style={c.captainB} numberOfLines={1}>
+          <Text style={[c.captainB, (isWin && status !== "winB") && { color: "#444" }]} numberOfLines={1}>
             {record.captainB?.toUpperCase()}
           </Text>
         </View>
 
-        {/* Money strip */}
+        {/* Money strip or Draw */}
         {isWin && won > 0 && (
           <>
             <View style={c.innerLine} />
             <View style={c.moneyStrip}>
-              <Text style={c.moneyWon}>₹{won} WON</Text>
+              <Text style={c.moneyWon}>₹{won} WON BY {winnerName}</Text>
               {left > 0 ? (
                 <Text style={c.moneyLeft}>₹{left} REMAINING</Text>
               ) : (
                 <Text style={c.moneyClear}>SETTLED ✓</Text>
               )}
+            </View>
+          </>
+        )}
+
+        {isDraw && (
+          <>
+            <View style={c.innerLine} />
+            <View style={c.moneyStrip}>
+              <Text style={[c.moneyWon, { color: "#888" }]}>DRAW</Text>
             </View>
           </>
         )}
