@@ -76,7 +76,7 @@ export default function Home() {
         {/* ── HEADER ─────────────────────────────────────────── */}
         <View style={s.header}>
           <View>
-            <Text style={s.appName}>THE BOYS</Text>
+            <Text style={s.appName}>THE BOYS 2.0</Text>
             <Text style={s.headerDate}>
               {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", year: "numeric" }).toUpperCase()}
             </Text>
